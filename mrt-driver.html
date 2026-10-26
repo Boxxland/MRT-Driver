@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><title>MRT Driver – 20 สถานี</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9eef8;--fg:#10204a;--card:#fff;--mut:#51628c;--acc:#1f4aa8;--warn:#d6291f;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a1126;--fg:#e8eefc;--card:#141d3a;--mut:#9fb0d6;--acc:#5b8cff;--warn:#ff6b5e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0a1126;--fg:#e8eefc;--card:#141d3a;--mut:#9fb0d6;--acc:#5b8cff;--warn:#ff6b5e;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Prompt,"Noto Sans Thai",system-ui,sans-serif}
+main{max-width:720px;margin:0 auto;padding:10px;display:grid;gap:8px}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:15px}
+.bezel{background:#05070f;border-radius:10px;padding:6px 6px 3px;border:2px solid #2a3558}
+.bezel canvas{width:100%;aspect-ratio:16/5;display:block;border-radius:4px}
+.cap{font-size:10px;color:#7f8fb8;text-align:center;padding-top:2px}
+.stage{position:relative;border-radius:10px;overflow:hidden}
+#c{width:100%;height:230px;display:block}
+#toast{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#000b;color:#fff;padding:5px 12px;border-radius:14px;font-size:13px;opacity:0;transition:opacity .25s;white-space:nowrap}
+#ov{position:absolute;inset:0;background:#050a1ccc;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;padding:16px}
+#ov h2{margin:0 0 6px;font-size:20px}#ov p{margin:4px 0 12px;font-size:13px;line-height:1.5;color:#cfd8f3}
+button{font:inherit;border:0;border-radius:10px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+#go{background:#ffd23f;color:#10204a;padding:10px 26px;font-weight:600}
+.hud{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.hud div{background:var(--card);border-radius:10px;padding:6px 8px;text-align:center;font-size:11px;color:var(--mut)}
+.hud b{display:block;font-size:22px;color:var(--fg)}
+.hud .w b{color:var(--warn)}
+.bar{height:6px;background:var(--card);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--acc)}
+.ctr{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ctr button{height:72px;font-size:20px;font-weight:600;color:#fff}
+#bb{background:#c0392b}#ba{background:#1f8a4c}
+.ctr button:active,.ctr button.on{filter:brightness(1.25)}
+button:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+small{color:var(--mut);text-align:center;font-size:11px}
+</style></head><body><main>
+<div class="top"><b>🚇 MRT Driver · 20 สถานี</b><span id="sc">0 คะแนน</span></div>
+<div class="bezel"><canvas id="mon" width="640" height="200"></canvas><div class="cap">จอมอนิเตอร์ในขบวน · วิดีโอสด</div></div>
+<div class="stage"><canvas id="c"></canvas><div id="toast"></div>
+<div id="ov"><div><h2 id="ot">ขับรถไฟ MRT 8 ตู้</h2><p id="op">กดเร่งเพื่อออกตัว กดเบรกเพื่อชะลอ<br>จอดให้ประตูตรงเส้นแดง ยิ่งใกล้ยิ่งได้คะแนนมาก<br>ถ้าเลยชานชาลาจะข้ามสถานีและโดนหัก 50 คะแนน</p><button id="go">เริ่มขับ</button></div></div></div>
+<div class="hud"><div>ความเร็ว (กม./ชม.)<b id="spd">0</b></div><div>ถึงเส้นหยุดอีก (ม.)<b id="dst">-</b></div><div id="bw">ระยะเบรก (ม.)<b id="brk">0</b></div></div>
+<div class="bar"><i id="pb"></i></div><small id="stn"></small>
+<div class="ctr"><button id="bb">เบรก</button><button id="ba">เร่ง</button></div>
+<small>คีย์บอร์ด: ↑ หรือ Space = เร่ง · ↓ = เบรก</small>
+</main>
+<script>
+const $=i=>document.getElementById(i);
+const S=[["หัวลำโพง","Hua Lamphong"],["สามย่าน","Sam Yan"],["สีลม","Silom"],["ลุมพินี","Lumphini"],["คลองเตย","Khlong Toei"],["ศูนย์สิริกิติ์","Queen Sirikit"],["สุขุมวิท","Sukhumvit"],["เพชรบุรี","Phetchaburi"],["พระราม 9","Phra Ram 9"],["ศูนย์วัฒนธรรม","Thailand Cultural Centre"],["ห้วยขวาง","Huai Khwang"],["สุทธิสาร","Sutthisan"],["รัชดาภิเษก","Ratchadaphisek"],["ลาดพร้าว","Lat Phrao"],["พหลโยธิน","Phahon Yothin"],["สวนจตุจักร","Chatuchak Park"],["กำแพงเพชร","Kamphaeng Phet"],["บางซื่อ","Bang Sue"],["เตาปูน","Tao Poon"],["บางโพ","Bang Pho"]];
+const N=20,GAP=700,CARS=8,CL=15,TL=CARS*CL,ST0=300,BR=3,sx=i=>ST0+i*GAP;
+const hash=n=>{const s=Math.sin(n*127.1)*43758.5453;return s-Math.floor(s)};
+const cv=$('c'),g=cv.getContext('2d'),mc=$('mon'),m=mc.getContext('2d');m.setTransform(2,0,0,2,0,0);
+let x,v,cur,st,score,timer,door,msg,msgT=0,stats,held={a:0,b:0},W=360,H=230,sc=1.7;
+function rs(){const d=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0);sc=Math.max(1.4,Math.min(3.2,W/220))}
+addEventListener('resize',rs);rs();
+function reset(){x=sx(0);v=0;cur=0;st='menu';score=0;timer=3;door=1;msg='';stats={perfect:0,skip:0}}
+function say(t){msg=t;msgT=3.5}
+function arrive(e){v=0;cur++;const p=e<=1?[100,'จอดตรงเป๊ะ!']:e<=3?[80,'ยอดเยี่ยม']:e<=6?[60,'ดีมาก']:e<=12?[30,'พอใช้']:[10,'ประตูไม่ตรงชานชาลา'];
+ if(e<=1)stats.perfect++;score+=p[0];say(p[1]+' +'+p[0]+' (ห่าง '+e.toFixed(1)+' ม.)');st='dwell';timer=4;door=0}
+function fin(){st='end';const r=score/1900;$('ot').textContent='ถึงสถานีปลายทาง บางโพ!';
+ $('op').innerHTML='คะแนน <b>'+score+'</b> / 1900<br>จอดเป๊ะ '+stats.perfect+' สถานี · ข้ามสถานี '+stats.skip+'<br>'+(r>=.85?'ระดับนายสถานีมืออาชีพ':r>=.6?'คนขับฝีมือดี':'ฝึกอีกนิดจะแม่นขึ้น');
+ $('go').textContent='ขับใหม่';$('ov').style.display='flex'}
+function upd(dt){
+ if(msgT>0)msgT-=dt;
+ if(st==='run'){
+  let a=-0.04-0.0004*v*v;if(held.a)a+=2.4*(1-v/40);if(held.b)a-=BR;
+  v=Math.max(0,v+a*dt);x+=v*dt;
+  const d=sx(cur+1)-x;
+  if(v<.2&&!held.a&&Math.abs(d)<=25)arrive(Math.abs(d));
+  else if(d<-25){stats.skip++;score-=50;cur++;say('ข้ามสถานี '+S[cur][0]+' −50');if(cur===N-1)fin()}
+ }else if(st==='dwell'){
+  timer-=dt;door=timer>3.3?(4-timer)/.7:timer<.7?Math.max(0,timer/.7):1;
+  if(timer<=0){if(cur===N-1)fin();else{st='run';door=0}}
+ }}
+function draw(t){
+ const gy=H*.72,hx=W*.72,X=q=>(q-x)*sc+hx;
+ let gr=g.createLinearGradient(0,0,0,gy);gr.addColorStop(0,'#1b2a5e');gr.addColorStop(1,'#f19a6b');g.fillStyle=gr;g.fillRect(0,0,W,H);
+ const bs=34,off=x*.12*sc,k0=Math.floor(off/bs);
+ for(let k=-1;k<W/bs+2;k++){const id=k+k0,h=30+hash(id)*80,bx=k*bs-(off%bs);g.fillStyle=hash(id+9)>.5?'#26325f':'#1f2a52';g.fillRect(bx,gy-h-6,bs-4,h+6);g.fillStyle='#ffd77aaa';for(let r=0;r<h/14;r++)if(hash(id*7+r)>.6)g.fillRect(bx+6,gy-h+r*14,5,6)}
+ g.fillStyle='#0e1630';g.fillRect(0,gy+4,W,H);g.fillStyle='#3a4468';g.fillRect(0,gy+4,W,8);
+ g.fillStyle='#222b4d';for(let k=-1;k<W/12+2;k++)g.fillRect(k*12-((x*sc)%12),gy+14,6,4);
+ for(let i=0;i<N;i++){const s=sx(i),L=X(s-145),R=X(s+15);if(R<-20||L>W+20)continue;
+  g.fillStyle='#8d97b8';g.fillRect(L,gy-8,R-L,12);g.fillStyle='#ffd23f';g.fillRect(L,gy-8,R-L,2);
+  g.fillStyle='#2b3560';g.fillRect(L,gy-84,R-L,8);for(let p=s-140;p<s+10;p+=35)g.fillRect(X(p),gy-76,3,68);
+  const cx=(L+R)/2;g.fillStyle='#1f4aa8';g.fillRect(cx-46,gy-76,92,22);g.fillStyle='#fff';g.textAlign='center';g.font='600 12px Prompt,sans-serif';g.fillText(S[i][0],cx,gy-62);g.font='8px Prompt,sans-serif';g.fillText(S[i][1].slice(0,24),cx,gy-56);
+  const pr=st==='dwell'&&cur===i?Math.min(1,Math.max(0,(3.3-timer)/2.6)):0;
+  for(let p=0;p<10;p++){let px=L+(R-L)*(hash(i*11+p)*.9+.05);if(pr>0){let b=px,bd=1e9;for(let c=0;c<CARS;c++){const dx=X(x-c*CL-CL/2);if(Math.abs(dx-px)<bd){bd=Math.abs(dx-px);b=dx}}px+=(b-px)*pr}
+   g.globalAlpha=1-pr*.9;g.fillStyle='hsl('+(hash(i*5+p)*360)+',60%,55%)';g.fillRect(px-1.5,gy-20,3,12);g.fillStyle='#f3c9a0';g.beginPath();g.arc(px,gy-23,2.5,0,7);g.fill()}
+  g.globalAlpha=1;
+  const tg=i===cur+1,mx=X(s);g.fillStyle=tg?'#ff3b30':'#b33';g.fillRect(mx-1,gy-48,3,40);
+  if(tg){g.globalAlpha=.5+.5*Math.sin(t*6);g.fillStyle='#ff3b30';g.fillRect(mx-1,gy-8,3,12);g.globalAlpha=1;g.fillStyle='#fff';g.font='600 10px Prompt,sans-serif';g.fillText('จอดตรงนี้',mx,gy-52)}}
+ g.textAlign='left';
+ for(let c=0;c<CARS;c++){const r=x-c*CL,px=X(r-CL)+1,w=CL*sc-2,y=gy-40,h=36,dx=px+w/2;
+  g.fillStyle='#111';g.fillRect(px+w*.1,y+h,w*.22,6);g.fillRect(px+w*.68,y+h,w*.22,6);
+  g.fillStyle='#e9eef9';g.beginPath();g.roundRect(px,y,w,h,c===0?[3,9,3,3]:3);g.fill();
+  g.fillStyle='#1f4aa8';g.fillRect(px,y+h-12,w,7);
+  g.fillStyle='#2a3a6a';for(const f of[.07,.22,.66,.81])g.fillRect(px+w*f,y+9,w*.12,11);
+  const dw=w*.17;g.fillStyle='#ffe9a8';g.fillRect(dx-dw/2,y+6,dw,h-10);
+  const pw=dw/2*(1-door);g.fillStyle='#9fb3d9';g.fillRect(dx-dw/2,y+6,pw,h-10);g.fillRect(dx+dw/2-pw,y+6,pw,h-10);
+  g.fillStyle='hsl('+((t*60+c*45)%360)+',90%,60%)';g.fillRect(dx-7,y+2,14,4);
+  if(c===0){g.fillStyle='#fff7b0';g.fillRect(px+w-3,y+h-18,3,5)}}
+ if(st==='run'&&v>1){g.fillStyle='#ffffff30';g.fillRect(0,gy-2,W*.2,1)}
+}
+function mon(t){
+ const w=320,h=100,sn=Math.floor(t/6)%4,p=(t%6)/6;m.clearRect(0,0,w,h);m.textAlign='left';
+ if(sn===0){m.fillStyle='#0d2a6b';m.fillRect(0,0,w,h);m.strokeStyle='#fff';m.lineWidth=3;m.beginPath();m.moveTo(14,52);m.lineTo(306,52);m.stroke();
+  for(let i=0;i<N;i++){m.fillStyle=i<=cur?'#ffd23f':'#fff';m.beginPath();m.arc(14+i*292/19,52,i===cur+1?5:3.5,0,7);m.fill()}
+  const f=Math.min(N-1,cur+Math.min(1,Math.max(0,(x-sx(cur))/GAP))),tx=14+f*292/19;m.fillStyle='#ff3b30';m.fillRect(tx-7,40,14,8);
+  const dw=st==='dwell'||st==='end',n=dw?S[cur]:S[Math.min(N-1,cur+1)];
+  m.fillStyle='#9fc0ff';m.font='11px Prompt,sans-serif';m.fillText(dw?'ถึงสถานี':'สถานีต่อไป',14,16);
+  m.fillStyle='#fff';m.font='600 18px Prompt,sans-serif';m.fillText(n[0],14,34);m.font='11px Prompt,sans-serif';m.fillText(n[1],150,34);
+  m.fillStyle='#9fc0ff';m.fillText(dw&&door>.5?'ประตูเปิดด้านขวา โปรดระวังช่องว่าง':'โปรดจับราวและยืนหลังเส้นเหลือง',14,74)}
+ else if(sn===1){m.fillStyle='hsl('+((t*40)%360)+',65%,42%)';m.fillRect(0,0,w,h);
+  for(let k=0;k<6;k++){m.fillStyle='#ffffff30';m.beginPath();m.arc(160+Math.cos(t*2+k)*120,44+Math.sin(t*3+k*1.3)*30,10+k*2,0,7);m.fill()}
+  m.save();m.translate(160,40);const z=1+Math.sin(t*4)*.06;m.scale(z,z);m.textAlign='center';m.fillStyle='#fff';m.font='600 30px Prompt,sans-serif';m.fillText('BOXXLAND',0,8);m.restore();
+  m.textAlign='center';m.fillStyle='#fff';m.font='12px Prompt,sans-serif';m.fillText('บอทดิสคอร์ด ครบจบในที่เดียว',160,62)}
+ else if(sn===2){const sk=m.createLinearGradient(0,0,0,h);sk.addColorStop(0,'#2d4a9a');sk.addColorStop(1,'#ffb36b');m.fillStyle=sk;m.fillRect(0,0,w,h);
+  m.fillStyle='#ffe27a';m.beginPath();m.arc(40+p*240,60-Math.sin(p*3.14)*42,13,0,7);m.fill();
+  for(let k=0;k<12;k++){const bx=(((k*30-t*25)%360)+360)%360-30,bh=20+hash(k)*40;m.fillStyle=k%2?'#1c2a58':'#25346a';m.fillRect(bx,84-bh,26,bh)}
+  m.textAlign='center';m.fillStyle='#fff';m.font='600 15px Prompt,sans-serif';m.fillText('ยินดีต้อนรับสู่ MRT สายสีน้ำเงิน',160,22)}
+ else{m.fillStyle='#ffd23f';m.fillRect(0,0,w,h);m.fillStyle='#10204a';
+  for(let k=0;k<20;k++)m.fillRect((((k*24+t*20)%480)-24),80,12,6);
+  m.strokeStyle='#10204a';m.lineWidth=4;m.lineCap='round';m.beginPath();m.arc(60,26,9,0,7);m.moveTo(60,35);m.lineTo(60,62);m.moveTo(60,62);m.lineTo(50,80);m.moveTo(60,62);m.lineTo(70,80);m.moveTo(60,42);m.lineTo(44,52);
+  const ang=-1+Math.sin(t*6)*.5;m.moveTo(60,42);m.lineTo(60+Math.cos(ang)*18,42+Math.sin(ang)*-18+10);m.stroke();
+  m.textAlign='left';m.font='600 17px Prompt,sans-serif';m.fillText('โปรดยืนหลังเส้นสีเหลือง',100,34);m.font='13px Prompt,sans-serif';m.fillText('Mind the gap',100,56)}
+ m.fillStyle='#000a';m.fillRect(0,86,w,14);m.fillStyle='#fff';m.font='10px Prompt,sans-serif';m.textAlign='left';
+ const tx='ห้ามรับประทานอาหารบนขบวน · โปรดให้ที่นั่งแก่ผู้สูงอายุ พระภิกษุ และสตรีมีครรภ์ · ขบวน 8 ตู้   ',tw=m.measureText(tx).width,o=-(t*40)%tw;m.fillText(tx,o,96);m.fillText(tx,o+tw,96);
+ m.textAlign='right';m.fillStyle=Math.floor(t*2)%2?'#ff3b30':'#7a1f1a';m.fillText('● LIVE',w-6,12);m.fillStyle='#fff';m.fillText(new Date().toTimeString().slice(0,5),w-52,12)}
+function hud(){
+ const d=st==='run'?Math.max(0,sx(cur+1)-x):null,b=v*v/(2*BR);
+ $('spd').textContent=Math.round(v*3.6);$('dst').textContent=d===null?'-':Math.round(d);$('brk').textContent=Math.round(b);
+ $('bw').className=d!==null&&v>1&&b>=d-15?'w':'';
+ $('sc').textContent=score+' คะแนน';$('pb').style.width=(cur/(N-1)*100)+'%';
+ $('stn').textContent='สถานีที่ '+(cur+1)+'/'+N+' · '+S[cur][0]+' → '+S[Math.min(N-1,cur+1)][0];
+ const tt=$('toast');tt.textContent=msg;tt.style.opacity=msgT>0?1:0}
+let last=performance.now();
+function fr(n){const dt=Math.min(.05,(n-last)/1000);last=n;upd(dt);draw(n/1000);mon(n/1000);hud();requestAnimationFrame(fr)}
+$('go').onclick=()=>{reset();st='dwell';timer=3;$('ov').style.display='none'};
+function hold(id,k){const e=$(id);const on=ev=>{ev.preventDefault();held[k]=1;e.classList.add('on')},off=()=>{held[k]=0;e.classList.remove('on')};
+ e.addEventListener('pointerdown',on);['pointerup','pointerleave','pointercancel'].forEach(z=>e.addEventListener(z,off))}
+hold('ba','a');hold('bb','b');
+addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key===' '){held.a=1;e.preventDefault()}if(e.key==='ArrowDown')held.b=1});
+addEventListener('keyup',e=>{if(e.key==='ArrowUp'||e.key===' ')held.a=0;if(e.key==='ArrowDown')held.b=0});
+reset();requestAnimationFrame(fr);
+</script></body></html>
